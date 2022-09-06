@@ -132,6 +132,25 @@ INNER JOIN DVRY_CADASTROS.tb_banco_dados AS d
 
 # COMMAND ----------
 
+gera_tabela_variedade()
+gera_tabela_variedade_ep()
+gera_tabela_grpmaturacao()
+gera_tabela_grpvariedade()
+df_pims = gera_tabela_saida_pims()
+
+# COMMAND ----------
+
+df_pims.createOrReplaceTempView('df')
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM df
+# MAGIC 
+# MAGIC WHERE DESC_COMPLETA_VARIEDADE LIKE '%83HO113%'
+
+# COMMAND ----------
+
 def gera_tabela_ga_saf_variedade():
   df = spark.sql("""
   SELECT DISTINCT
@@ -212,8 +231,8 @@ df_pims = gera_tabela_saida_pims()
 # se ja esta gravado dados consolidados do legado, tras estes dados prontos, senao, grava
 # if not os.path.isdir('/dbfs/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table):
 df_gatec = gera_tabela_saida_gatec()
-df_gatec.write.format('parquet').mode('overwrite').save('/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table)
-df_gatec = spark.read.parquet('/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table)
+#df_gatec.write.format('parquet').mode('overwrite').save('/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table)
+#df_gatec = spark.read.parquet('/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table)
 
 
 # consolida os dataframes
@@ -222,8 +241,8 @@ df = df_pims.union(df_gatec).dropDuplicates()
 #Grava saida de dataframes
 status = False
 x = 0
-while status == False and x <10:
-  status = insere_dados_tabela_populada_dvry(df, owner, table, 'overwrite', 'parquet', pthDestino)
-  x=x+1
-  print(status)
+#while status == False and x <10:
+#  status = insere_dados_tabela_populada_dvry(df, owner, table, 'overwrite', 'parquet', pthDestino)
+#  x=x+1
+#  print(status)
 
