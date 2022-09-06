@@ -246,3 +246,14 @@ x = 0
 #  x=x+1
 #  print(status)
 
+
+# COMMAND ----------
+
+df.createOrReplaceTempView('df')
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM trusted_tezkk0_pims2.VARIEDADE
+# MAGIC 
+# MAGIC WHERE  CD_VARIEDADE = 1000479
