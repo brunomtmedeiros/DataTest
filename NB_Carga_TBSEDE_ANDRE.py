@@ -146,7 +146,8 @@ LEFT JOIN regiao_fazenda AS r
 def gera_tabela_ga_empr():
   df = spark.sql("""
 SELECT DISTINCT 
-       CAST(COD_EMPR AS BIGINT)   AS COD_EMPR,
+       CAST(COD_EMPR AS BIGINT)        AS COD_EMPR,
+       CAST(COD_EMPR_PROD AS BIGINT)   AS COD_EMPR_PROD,
        1000 AS ID_ORIGEM_DB,
        SUBSTR(ABV_EMPR,3,2)       AS COD_FAZENDA,
        CONCAT(SUBSTR(ABV_EMPR,3,2),
@@ -163,7 +164,6 @@ SELECT DISTINCT
        INITCAP(EMP_CIDAD)         AS EMP_CIDAD,
        CNPJ_Masked(TRIM(EMP_CGC)) AS EMP_CGC
 FROM trusted_gatec_saf_legado.ga_empr
-WHERE LEFT(ABV_EMPR,2) = 'FZ'
 """)
   df.createOrReplaceTempView("ga_empr")
 
@@ -183,7 +183,8 @@ def gera_tabela_saida_gatec():
        r.REGIONAL,
        e.EMP_CIDAD                                    AS CIDADE,
        e.EMP_CGC                                      AS CNPJ,
-       CONCAT(b.ID_DOMAIN, e.COD_EMPR)                AS ID_FAZENDA
+       CONCAT(b.ID_DOMAIN, e.COD_EMPR)                AS ID_FAZENDA,
+       CONCAT(b.ID_DOMAIN, e.COD_EMPR_PROD)           AS ID_FAZENDA_PROD
 FROM ga_empr AS e
 INNER JOIN DVRY_CADASTROS.tb_banco_dados AS b
   ON e.ID_ORIGEM_DB = b.ID_DOMAIN
@@ -191,6 +192,15 @@ INNER JOIN regiao_fazenda AS r
   ON r.COD_FAZENDA = e.COD_FAZENDA
 """)
   return df
+
+# COMMAND ----------
+
+gera_tabela_ga_empr()
+df_gatec = gera_tabela_saida_gatec()
+
+# COMMAND ----------
+
+display(df_gatec)
 
 # COMMAND ----------
 
@@ -216,19 +226,33 @@ df_pims = gera_tabela_saida_pims()
 # se ja esta gravado dados consolidados do legado, tras estes dados prontos, senao, grava
 #if not os.path.isdir('/dbfs/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table):
 df_gatec = gera_tabela_saida_gatec()
-df_gatec.write.format('parquet').mode('overwrite').save('/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table)
-
-df_gatec = spark.read.parquet('/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table)
+#df_gatec.write.format('parquet').mode('overwrite').save('/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table)
+#
+#df_gatec = spark.read.parquet('/mnt/dvryzone-slc/GATEC_SAF_LEGADO/'+table)
 
 
 # consolida os dataframes
 df = df_pims.union(df_gatec).dropDuplicates()
 
 #Grava saida de dataframes
-status = False
-x = 0
-while status == False and x <10:
-  status = insere_dados_tabela_populada_dvry(df, owner, table, 'overwrite', 'parquet', pthDestino)
-  x=x+1
-  print(status)
+#status = False
+#x = 0
+#while status == False and x <10:
+#  status = insere_dados_tabela_populada_dvry(df, owner, table, 'overwrite', 'parquet', pthDestino)
+#  x=x+1
+#  print(status)
 
+
+# COMMAND ----------
+
+display(df_gatec)
+
+# COMMAND ----------
+
+df_gatec.createOrReplaceTempView("df_gatec")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from df_gatec
+# MAGIC WHERE ID_DOMAIN = 15
