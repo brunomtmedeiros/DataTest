@@ -33,14 +33,82 @@ spark.sql("CREATE DATABASE IF NOT EXISTS " + owner)
 
 # COMMAND ----------
 
-def gera_tabela_MARC():
+def gera_tabela_EBAN():
   df = spark.sql("""
 SELECT DISTINCT
-       WERKS,
-       MATNR
-FROM TRUSTED_SAP.MARC
+       BEDAT,
+       EBELN,
+       EBELP,
+       BADAT,
+       BANFIN,
+       BNFPO,
+       BSART,
+       MATNR,
+       TXZ01,
+       MENGE,
+       MEINS,
+       AFNAM,
+       MATKL,
+       FISTL,
+       EKGRP,
+       ERNAM,
+       RLWRT,
+       PEINH,
+       LOEKZ,
+       STATU,
+       ESTKZ,
+       FRGKZ,
+       FRGST,
+       ERDAT,
+       BEDNR,
+       BADAT,
+       EKORG,
+       BLCKD,
+       BLCKT,
+       FRGDT,
+       BSMNG,
+       BMEIN
+       
+FROM TRUSTED_SAP.EBAN
 """)
-  df.createOrReplaceTempView("MARC")
+  df.createOrReplaceTempView("EBAN")
+
+# COMMAND ----------
+
+def gera_tabela_EBNK():
+  df = spark.sql("""
+SELECT DISTINCT
+       AUFNR,
+       AUFNR,
+       SAKTO,
+       PRCTR,
+       KOSTL
+FROM TRUSTED_SAP.EBNK
+""")
+  df.createOrReplaceTempView("EBNK")
+
+# COMMAND ----------
+
+def gera_tabela_EKKO():
+  df = spark.sql("""
+SELECT DISTINCT
+       BSART,
+       ERNAM,
+       RLWRT,
+       LIFNR
+FROM TRUSTED_SAP.EKKO
+""")
+  df.createOrReplaceTempView("EKKO")
+
+# COMMAND ----------
+
+def gera_tabela_LFA1():
+  df = spark.sql("""
+SELECT DISTINCT
+       NAME1
+FROM TRUSTED_SAP.LFA1
+""")
+  df.createOrReplaceTempView("LFA1")
 
 # COMMAND ----------
 
@@ -48,23 +116,61 @@ FROM TRUSTED_SAP.MARC
 def gera_tabela_saida():
   df = spark.sql(f"""
 SELECT DISTINCT
-       MA.MATNR                          AS COD_MATERIAL,
-       MT.MAKTX                          AS DESCRICAO,
-       MC.WERKS                          AS CENTRO,
-       MA.MEINS                          AS UNIDADE_MEDIDA
-FROM MARA AS MA
-INNER JOIN MAKT AS MT
-  ON MA.MATNR = MT.MATNR
-INNER JOIN MARC AS MC
-  ON MA.MATNR = MC.MATNR
+       BEDAT,
+       EBELN,
+       EBELP,
+       BADAT,
+       BANFIN,
+       BNFPO,
+       BSART,
+       MATNR,
+       TXZ01,
+       MENGE,
+       MEINS,
+       AFNAM,
+       MATKL,
+       FISTL,
+       EKGRP,
+       ERNAM,
+       RLWRT,
+       PEINH,
+       LOEKZ,
+       STATU,
+       ESTKZ,
+       FRGKZ,
+       FRGST,
+       ERDAT,
+       BEDNR,
+       BADAT,
+       EKORG,
+       BLCKD,
+       BLCKT,
+       FRGDT,
+       BSMNG,
+       SUM(MENGE - BSMNG) AS QUANTIDADE_PENDENTE
+       BSART,
+       ERNAM,
+       RLWRT,
+       BMEIN
+       LIFNR
+       NAME1 AS NOME_FORNECEDOR
+       SUM(FRGDT - BEDAT) AS CALCULO
+FROM EBAN AS EBA
+INNER JOIN EBKN AS EBK
+  ON EBA.MANDT = EBK.MANDT
+INNER JOIN EKKO AS EKK
+  ON EBA.MANDT = EKK.MANDT
+INNER JOIN LFA1 AS LFA
+  ON EBA.MANDT = LFA.MANDT
 """)
   return df
 
 # COMMAND ----------
 
-gera_tabela_MARA()
-gera_tabela_MAKT()
-gera_tabela_MARC()
+gera_tabela_EBAN()
+gera_tabela_EBKN()
+gera_tabela_EKKO()
+gera_tabela_LFA1()
 df = gera_tabela_saida()
 display(df)
 
