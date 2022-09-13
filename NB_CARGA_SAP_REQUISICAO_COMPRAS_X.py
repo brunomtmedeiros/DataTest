@@ -37,6 +37,7 @@ def gera_tabela_EBAN():
   df = spark.sql("""
 SELECT DISTINCT
        MANDT,
+       LIFNR,
        BEDAT,
        EBELN,
        EBELP,
@@ -79,7 +80,8 @@ FROM TRUSTED_SAP.EBAN
 def gera_tabela_EBKN():
   df = spark.sql("""
 SELECT DISTINCT
-       MANDT,
+       BANFN,
+       BNFPO,
        AUFNR,
        AUFNR,
        SAKTO,
@@ -109,6 +111,7 @@ def gera_tabela_LFA1():
   df = spark.sql("""
 SELECT DISTINCT
        MANDT,
+       LIFNR,
        NAME1
 FROM TRUSTED_SAP.LFA1
 """)
@@ -118,7 +121,7 @@ FROM TRUSTED_SAP.LFA1
 
 # DBTITLE 1,Dataset de saída
 def gera_tabela_saida():
-  df = spark.sql(f"""
+  df = spark.sql("""
 SELECT DISTINCT
        EBA.BEDAT AS DATA_PEDIDO,
        EBA.EBELN AS PEDIDO,
@@ -151,25 +154,22 @@ SELECT DISTINCT
        EBA.BLCKT AS TXT_BLOQUEIO,
        EBA.FRGDT AS DATA_APROVACAO,
        EBK.AUFNR AS OS,
-       EBK.AUFNR AS ORDEM,
+       EBK.AUFNR AS ORDEM_SERVICO,
        EBK.SAKTO AS CONTA_RAZAO,
        EBK.PRCTR AS CENTRO_LUCRO,
        EBK.KOSTL AS CENTRO_CUSTO,
-       EBA.BSMNG AS QNTD_PEDIDA,
-     --SUM(EBA.MENGE - EBA.BSMNG) AS QNTD_PENDENTE,
-       EKK.BSART AS TIPO_PEDIDO_COMPRAS, 
-       EKK.ERNAM AS USUARIO_PEDIDO,
-       EKK.RLWRT AS VALOR_TOTAL_PEDIDO,
-       EBA.BMEIN AS VALOR_UNIT_PEDIDO,
-       EKK.LIFNR AS BP_FORNECEDOR,
+       EBA.BMEIN AS VALOT_UNIT_PEDIDO,
+       EKK.BSART AS TIPO_PEDIDO_COMPRAS,                          ffffffffffff                                                                                                                                            
        LFA.NAME1 AS NOME_FORNECEDOR
+       
 FROM EBAN AS EBA
 INNER JOIN EBKN AS EBK
-  ON EBA.MANDT = EBK.MANDT
-INNER JOIN EKKO AS EKK
-  ON EBA.MANDT = EKK.MANDT
+  ON EBA.BNFPO = EBK.BNFPO
+    AND EBA.BANFN = EBK.BANFN
 INNER JOIN LFA1 AS LFA
-  ON EBA.MANDT = LFA.MANDT
+  ON EBA.LIFNR = LFA.LIFNR
+INNER JOIN EKKO AS EKK
+  ON LFA.LIFNR = EKK.LIFNR
 """)
   return df
 
@@ -181,6 +181,17 @@ gera_tabela_EKKO()
 gera_tabela_LFA1()
 df = gera_tabela_saida()
 display(df)
+
+# COMMAND ----------
+
+df.createOrReplaceTempView("df_count")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select count(*) as total from df_count
+# MAGIC --37979 -LFA1
+# MAGIC --193679 -EKKO
 
 # COMMAND ----------
 
