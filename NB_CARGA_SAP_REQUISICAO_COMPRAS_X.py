@@ -24,7 +24,7 @@ print('pthDestino ----> '+pthDestino)
 # COMMAND ----------
 
 # DBTITLE 1,Criaçao de schema
-spark.sql("CREATE DATABASE IF NOT EXISTS " + owner)
+#spark.sql("CREATE DATABASE IF NOT EXISTS " + owner)
 
 # COMMAND ----------
 
@@ -38,7 +38,6 @@ def gera_tabela_EBAN():
 SELECT DISTINCT
        MANDT,
        LIFNR,
-       BEDAT,
        EBELN,
        EBELP,
        BADAT,
@@ -67,13 +66,19 @@ SELECT DISTINCT
        EKORG,
        BLCKD,
        BLCKT,
-       FRGDT,
        BSMNG,
-       BMEIN
-       
+       BMEIN,
+       FRGDT,
+       BEDAT
+      
 FROM TRUSTED_SAP.EBAN
 """)
   df.createOrReplaceTempView("EBAN")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select BEDAT FROM TRUSTED_SAP.EBAN
 
 # COMMAND ----------
 
@@ -122,7 +127,7 @@ FROM TRUSTED_SAP.LFA1
 
 # DBTITLE 1,Dataset de saída
 def gera_tabela_saida():
-  df = spark.sql("""
+  df = spark.sql(f"""
 SELECT DISTINCT
        EBA.BEDAT AS DATA_PEDIDO,
        EBA.EBELN AS PEDIDO,
@@ -160,11 +165,14 @@ SELECT DISTINCT
        EBK.PRCTR AS CENTRO_LUCRO,
        EBK.KOSTL AS CENTRO_CUSTO,
        EBA.BSMNG AS QUANTIDADE_PEDIDA,
+       SUM(EBA.MENGE - EBA.BSMNG) AS QUANTIDADE_PENDENTE,
        EKK.BSART AS TIPO_PEDIDO_COMPRAS,
        EKK.ERNAM AS USUARIO_PEDIDO,
        EKK.RLWRT AS VALOR_TOTAL_PEDIDO,
        EBA.BMEIN AS VALOR_UNIT_PEDIDO,
-       LFA.NAME1 AS NOME_FORNECEDOR
+       EKK.LIFNR AS BP_FORNECEDOR,
+       LFA.NAME1 AS NOME_FORNECEDOR,
+       SUM(EBA.FRGDT - EBA.BEDAT) AS CALCULO
        
 FROM EBAN AS EBA
 INNER JOIN EBKN AS EBK
@@ -174,6 +182,51 @@ INNER JOIN LFA1 AS LFA
   ON EBA.LIFNR = LFA.LIFNR
 INNER JOIN EKKO AS EKK
   ON LFA.LIFNR = EKK.LIFNR
+  
+GROUP BY 
+  EBA.BEDAT,
+  EBA.EBELN,
+  EBA.EBELP,
+  EBA.BADAT,
+  EBA.BANFN,
+  EBA.BNFPO,
+  EBA.BSART,
+  EBA.MATNR,
+  EBA.TXZ01,
+  EBA.MENGE,
+  EBA.MEINS,
+  EBA.AFNAM,
+  EBA.MATKL,
+  EBA.FISTL,
+  EBA.EKGRP,
+  EBA.ERNAM,
+  EBA.RLWRT,
+  EBA.PEINH,
+  EBA.LOEKZ,
+  EBA.STATU,
+  EBA.ESTKZ,
+  EBA.FRGKZ,
+  EBA.FRGST,
+  EBA.ERDAT,
+  EBA.BEDNR,
+  EBA.BADAT,
+  EBA.EKORG,
+  EBA.BLCKD,
+  EBA.BLCKT,
+  EBA.FRGDT,
+  EBK.AUFNR,
+  EBK.AUFNR,
+  EBK.SAKTO,
+  EBK.PRCTR,
+  EBK.KOSTL,
+  EBA.BSMNG,
+  EKK.BSART,
+  EKK.ERNAM,
+  EKK.RLWRT,
+  EBA.BMEIN,
+  EKK.LIFNR,
+  LFA.NAME1
+  
 """)
   return df
 
@@ -201,17 +254,17 @@ df.createOrReplaceTempView("df_count")
 
 # DBTITLE 1,Orquestraçao de carga
 # geraçao de tabelas tratadas
-gera_tabela_MARA()
-gera_tabela_MAKT()
-gera_tabela_MARC()
-
-# geraçao de tabela de saida
-df = gera_tabela_saida()
-
-#Grava saida de dataframes
-status = False
-x = 0
-while status == False and x <10:
-  status = insere_dados_tabela_populada_dvry(df, owner, table, 'overwrite', 'parquet', pthDestino)
-  x=x+1
-  print(status)
+#gera_tabela_MARA()
+#gera_tabela_MAKT()
+#gera_tabela_MARC()
+#
+## geraçao de tabela de saida
+#df = gera_tabela_saida()
+#
+##Grava saida de dataframes
+#status = False
+#x = 0
+#while status == False and x <10:
+#  status = insere_dados_tabela_populada_dvry(df, owner, table, 'overwrite', 'parquet', pthDestino)
+#  x=x+1
+#  print(status)
