@@ -81,6 +81,7 @@ def gera_tabela_EBKN():
   df = spark.sql("""
 SELECT DISTINCT
        BANFN,
+       FISTL,
        BNFPO,
        AUFNR,
        AUFNR,
@@ -158,8 +159,11 @@ SELECT DISTINCT
        EBK.SAKTO AS CONTA_RAZAO,
        EBK.PRCTR AS CENTRO_LUCRO,
        EBK.KOSTL AS CENTRO_CUSTO,
-       EBA.BMEIN AS VALOT_UNIT_PEDIDO,
-       EKK.BSART AS TIPO_PEDIDO_COMPRAS,                          ffffffffffff                                                                                                                                            
+       EBA.BSMNG AS QUANTIDADE_PEDIDA,
+       EKK.BSART AS TIPO_PEDIDO_COMPRAS,
+       EKK.ERNAM AS USUARIO_PEDIDO,
+       EKK.RLWRT AS VALOR_TOTAL_PEDIDO,
+       EBA.BMEIN AS VALOR_UNIT_PEDIDO,
        LFA.NAME1 AS NOME_FORNECEDOR
        
 FROM EBAN AS EBA
