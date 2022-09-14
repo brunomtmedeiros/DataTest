@@ -67,19 +67,33 @@ FROM TRUSTED_SAP.MARC
 
 # COMMAND ----------
 
+def gera_tabela_MBEW():
+  df = spark.sql("""
+SELECT DISTINCT
+       MATNR,
+       LBKUM
+FROM TRUSTED_SAP.MBEW
+""")
+  df.createOrReplaceTempView("MBEW")
+
+# COMMAND ----------
+
 # DBTITLE 1,Dataset de saída
 def gera_tabela_saida():
   df = spark.sql(f"""
 SELECT DISTINCT
-       MA.MATNR                          AS COD_MATERIAL,
-       MT.MAKTX                          AS DESCRICAO,
-       MC.WERKS                          AS CENTRO,
-       MA.MEINS                          AS UNIDADE_MEDIDA
+       MA.MATNR                AS COD_MATERIAL,
+       MT.MAKTX                AS DESCRICAO,
+       MC.WERKS                AS CENTRO,
+       MB.LBKUM                AS QNTD_ESTOQUE,
+       MA.MEINS                AS UNIDADE_MEDIDA
 FROM MARA AS MA
 INNER JOIN MAKT AS MT
   ON MA.MATNR = MT.MATNR
 INNER JOIN MARC AS MC
   ON MA.MATNR = MC.MATNR
+INNER JOIN MBEW AS MB
+  ON MA.MATNR = MB.MATNR
 """)
   return df
 
@@ -88,6 +102,7 @@ INNER JOIN MARC AS MC
 gera_tabela_MARA()
 gera_tabela_MAKT()
 gera_tabela_MARC()
+gera_tabela_MBEW()
 df = gera_tabela_saida()
 display(df)
 
