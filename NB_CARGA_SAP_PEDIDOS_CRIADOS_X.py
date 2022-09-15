@@ -53,7 +53,8 @@ SELECT DISTINCT
        BNFPO,
        BRTWR,
        J_1BNBM,
-       MWSKZ
+       MWSKZ,
+       KTPNR
 FROM TRUSTED_SAP.EKPO
 """)
   df.createOrReplaceTempView("EKPO")
@@ -100,9 +101,16 @@ SELECT DISTINCT
        KOSTL,
        PRCTR,
        AUFNR,
-       ANLN1,
-       ANLN2
+       SUM(ANLN1 - ANLN2) AS IMOBILIZADO,
+       EBELP
 FROM TRUSTED_SAP.EKKN
+GROUP BY
+       KOSTL,
+       PRCTR,
+       AUFNR,
+       ANLN1,
+       ANLN2,
+       EBELP
 """)
   df.createOrReplaceTempView("EKKN")
 
@@ -111,7 +119,8 @@ FROM TRUSTED_SAP.EKKN
 def gera_tabela_EBAN():
   df = spark.sql("""
 SELECT DISTINCT
-       BSART
+       BSART,
+       KTPNR
 FROM TRUSTED_SAP.EBAN
 """)
   df.createOrReplaceTempView("EBAN")
@@ -165,7 +174,12 @@ SELECT DISTINCT
        EKPO.BRTWR                                                                                             AS VALOR_BRUTO,
        EKPO.J_1BNBM                                                                                           AS NCM,
        EKPO.MWSKZ                                                                                             AS IVA,
-       FORN.NOME
+       FORN.NOME                                                                                              AS NOME_COMP_FORNECEDOR,
+       EKKN.KOSTL                                                                                             AS CENTRO_CUSTO,
+       EKKN.PRCTR                                                                                             AS CENTRO_LUCRO,
+       EKKN.AUFNR                                                                                             AS ORDEM,
+       EKKN.IMOBILIZADO                                                                                       AS IMOBILIZADO,
+       EBAN.BSART                                                                                             AS TIPO_RC
 FROM EKPO
 INNER JOIN EKKO
   ON EKPO.EBELN = EKKO.EBELN
@@ -173,6 +187,10 @@ INNER JOIN EKET
   ON EKPO.EBELP = EKET.EBELP
 LEFT JOIN TBFORNECEDOR AS FORN
   ON EKKO.LIFNR = FORN.FORNECEDOR
+INNER JOIN EKKN
+  ON EKPO.EBELP = EKKN.EBELP
+INNER JOIN EBAN
+  ON EKPO.KTPNR = EBAN.KTPNR
 """)
   return df
 
