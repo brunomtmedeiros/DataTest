@@ -77,6 +77,11 @@ FROM TRUSTED_SAP.MBEW
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC drop table trusted_sap.mbew
+
+# COMMAND ----------
+
 gera_tabela_MBEW()
 
 # COMMAND ----------
