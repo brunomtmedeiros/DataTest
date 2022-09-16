@@ -179,7 +179,9 @@ SELECT DISTINCT
        EKKN.PRCTR                                                                                             AS CENTRO_LUCRO,
        EKKN.AUFNR                                                                                             AS ORDEM,
        EKKN.IMOBILIZADO                                                                                       AS IMOBILIZADO,
-       EBAN.BSART                                                                                             AS TIPO_RC
+       EBAN.BSART                                                                                             AS TIPO_RC,
+       CONCAT(EKPO.EBELN, EKPO.EBELP)                                                                         AS CHAVE_PEDIDO,
+       CONCAT(EKPO.EBELN, EKKO.INCO1)                                                                         AS CHAVE_FRETE
 FROM EKPO
 INNER JOIN EKKO
   ON EKPO.EBELN = EKKO.EBELN
