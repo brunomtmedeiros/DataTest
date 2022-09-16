@@ -50,36 +50,58 @@ FROM TRUSTED_SAP.EBAN AS EBA
 def gera_tabela_CDHDR():
   df = spark.sql("""
 SELECT DISTINCT
-       OBJECTID,
-       UDATE,
-       CHANGENR
-FROM TRUSTED_SAP.CDHDR AS CDH
+       *
+FROM TRUSTED_SAP.CDHDR
   """)
   df.createOrReplaceTempView("CDHDR")
+
+# COMMAND ----------
+
+gera_tabela_CDHDR()
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from TRUSTED_SAP.CDPOS AS CDPOS
+# MAGIC LEFT JOIN TRUSTED_SAP.CDHDR AS CDH
+# MAGIC   ON CDPOS.MANDANT = CDH.MANDANT
+# MAGIC WHERE CDH.TCODE = 'ME54N'
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select TCODE FROM trusted_sap.CDHDR AS CDH
+# MAGIC WHERE CDH.TCODE = 'ME54N'
 
 # COMMAND ----------
 
 def gera_tabela_CDPOS():
   df = spark.sql("""
 SELECT DISTINCT
-       OBJECTID,
-       UDATE,
-       CHANGENR
+       CHANGENR,
+       FNAME
 FROM TRUSTED_SAP.CDPOS AS CDP
   """)
   df.createOrReplaceTempView("CDPOS")
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC select * from CDHDR
+
+# COMMAND ----------
+
 # DBTITLE 1,Dataset de saída
 def gera_tabela_saida():
-  df = spark.sql(f"""
+  df = spark.sql("""
 SELECT DISTINCT
        EBA.BANFN AS REQUISICAO,
        EBA.BNFPO AS ITEM_REQUISICAO,
        EBA.FRGGR AS GRUPO_LIBERACAO,
        EBA.FRGST AS ESTRATEGIA_LIBERACAO,
-       EBA.FRGKZ AS COD_LIBERACAO
+       EBA.FRGKZ AS COD_LIBERACAO,
+       CASE EBA.FRGKZ
+         WHEN 'X' THEN CDH.OBJECTID = 'ME54N'
 FROM EBAN AS EBA
 """)
   return df
@@ -87,6 +109,8 @@ FROM EBAN AS EBA
 # COMMAND ----------
 
 gera_tabela_EBAN()
+gera_tabela_CDHDR()
+gera_tabela_CDPOS()
 df = gera_tabela_saida()
 display(df)
 
@@ -103,3 +127,8 @@ while status == False and x <10:
   status = insere_dados_tabela_populada_dvry(df, owner, table, 'overwrite', 'parquet', pthDestino)
   x=x+1
   print(status)
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from trusted_sap.CDHDR
