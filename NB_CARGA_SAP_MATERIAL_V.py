@@ -37,7 +37,7 @@ def gera_tabela_MARA():
   df = spark.sql("""
 SELECT DISTINCT
        MATNR,
-       MATKL,
+       CAST(MATKL AS INT)    AS MATKL, 
        MTART,
        MANDT
 FROM TRUSTED_SAP.MARA
@@ -72,12 +72,12 @@ FROM TRUSTED_SAP.T024
 def gera_tabela_saida():
   df = spark.sql(f"""
 SELECT DISTINCT
-       MA.MATNR                          AS COD_MATERIAL,
-       MT.MAKTX                          AS DESCRICAO,
-       CONCAT(MA.MATNR, " - ", MT.MAKTX) AS CODIGO_DESCRICAO,
-       T.EKGRP                           AS GRUPO_COMPRAS,
-       MA.MATKL                          AS GRUPO_MERCADORIA,
-       MA.MTART                          AS TIPO
+       MA.MATNR                            AS COD_MATERIAL,
+       MT.MAKTX                            AS DESCRICAO,
+       CONCAT(MA.MATNR, ' - ', MT.MAKTX)   AS CODIGO_DESCRICAO,
+       T.EKGRP                             AS GRUPO_COMPRAS,
+       MA.MATKL                            AS GRUPO_MERCADORIA,
+       MA.MTART                            AS TIPO
 FROM MARA AS MA
 INNER JOIN MAKT AS MT
   ON MA.MATNR = MT.MATNR
