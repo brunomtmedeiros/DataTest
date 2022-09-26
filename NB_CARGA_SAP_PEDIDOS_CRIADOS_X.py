@@ -119,8 +119,7 @@ GROUP BY
 def gera_tabela_EBAN():
   df = spark.sql("""
 SELECT DISTINCT
-       BSART,
-       KTPNR
+       FRGKZ
 FROM TRUSTED_SAP.EBAN
 """)
   df.createOrReplaceTempView("EBAN")
@@ -135,6 +134,20 @@ SELECT DISTINCT
 FROM DVRY_SAP.TBFORNECEDOR
 """)
   df.createOrReplaceTempView("TBFORNECEDOR")
+
+# COMMAND ----------
+
+def gera_tabela_EBAN():
+  df = spark.sql("""
+SELECT DISTINCT
+       BANFN,
+       BNFPO,
+       FRGGR,
+       FRGST,
+       FRGKZ
+FROM TRUSTED_SAP.EBAN AS EBA
+  """)
+  df.createOrReplaceTempView("EBAN")
 
 # COMMAND ----------
 
@@ -184,7 +197,9 @@ SELECT DISTINCT
        CONCAT(EKPO.EBELN, EKKO.INCO1)                                                                         AS CHAVE_FRETE
 FROM EKPO
 INNER JOIN EKKO
-  ON EKPO.EBELN = EKKO.EBELN
+  ON EKPO.LPONR = EKKO.LPONR
+    AND EKPO.EBELN = EKKO.EBELN
+    AND EKPO.KONNR = EKKO.KONNR
 INNER JOIN EKET
   ON EKPO.EBELP = EKET.EBELP
 LEFT JOIN TBFORNECEDOR AS FORN
@@ -203,6 +218,7 @@ gera_tabela_EKKO()
 gera_tabela_EKKN()
 gera_tabela_EBAN()
 gera_tabela_EKET()
+gera_tabela_TBFORNECEDOR()
 df = gera_tabela_saida()
 display(df)
 
@@ -219,3 +235,30 @@ while status == False and x <10:
   status = insere_dados_tabela_populada_dvry(df, owner, table, 'overwrite', 'parquet', pthDestino)
   x=x+1
   print(status)
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT DISTINCT
+# MAGIC        EKPO.EBELN                                                                                             AS DOC_COMPRAS,
+# MAGIC        EKPO.WERKS                                                                                             AS CEN,
+# MAGIC        EKPO.EBELP                                                                                             AS ITEM,
+# MAGIC        EKPO.EMATN                                                                                             AS MATERIAL,
+# MAGIC        EKPO.TXZ01                                                                                             AS TEXTO_BREVE,
+# MAGIC        EKPO.MATKL                                                                                             AS GRPMERCADS,
+# MAGIC        EKPO.LOEKZ                                                                                             AS COD_ELIMINACAO,
+# MAGIC        EKPO.MENGE                                                                                             AS QTD_PEDIDO,
+# MAGIC        EKPO.MEINS                                                                                             AS UMP,
+# MAGIC        EKPO.NETPR                                                                                             AS PRECO_LIQ,
+# MAGIC        EKPO.PEINH                                                                                             AS POR,
+# MAGIC        CAST((((EKPO.MENGE - COALESCE(EKET.WEMNG,0))*EKPO.NETPR)/COALESCE(EKPO.PEINH,1)) AS DECIMAL(18,6))     AS A_FORNECER,
+# MAGIC        CAST((EKPO.MENGE - COALESCE(EKET.WEMNG,0)) AS DECIMAL(18,6))                                           AS A_FATURAR,
+# MAGIC        EKPO.BANFN                                                                                             AS REQUISICAO,
+# MAGIC        EKPO.BNFPO                                                                                             AS ITEM_RC,
+# MAGIC        EKPO.BRTWR                                                                                             AS VALOR_BRUTO,
+# MAGIC        EKPO.J_1BNBM                                                                                           AS NCM,
+# MAGIC        EKPO.MWSKZ                                                                                             AS IVA,
+# MAGIC        CONCAT(EKPO.EBELN, EKPO.EBELP)                                                                         AS CHAVE_PEDIDO
+# MAGIC FROM TRUSTED_SAP.EKPO
+# MAGIC INNER JOIN TRUSTED_SAP.EKET
+# MAGIC   ON EKPO.EBELP = EKET.EBELP
