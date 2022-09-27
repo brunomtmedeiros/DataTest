@@ -38,7 +38,7 @@ def gera_tabela_EKPO():
 SELECT DISTINCT
        EBELN,
        to_timestamp(cast(cast(CONCAT(CREATIONDATE,CREATIONTIME) as decimal(18,0)) as varchar(18)),'yyyyMMddHHmmss') AS DATA_HORA_CRIACAO,
-       HASHCAL_EXISTS AS ORGANIZ_COMPRAS,
+       HASHCAL_EXISTS AS HASHCAL_EXISTS,
        WERKS,
        EBELP,
        EMATN,
@@ -88,7 +88,8 @@ def gera_tabela_EKET():
 SELECT DISTINCT
        WEMNG,
        EBELP,
-       SLFDT
+       SLFDT,
+       EBELN
 FROM TRUSTED_SAP.EKET
 """)
   df.createOrReplaceTempView("EKET")
@@ -102,7 +103,8 @@ SELECT DISTINCT
        PRCTR,
        AUFNR,
        SUM(ANLN1 - ANLN2) AS IMOBILIZADO,
-       EBELP
+       EBELP,
+       EBELN
 FROM TRUSTED_SAP.EKKN
 GROUP BY
        KOSTL,
@@ -110,19 +112,10 @@ GROUP BY
        AUFNR,
        ANLN1,
        ANLN2,
-       EBELP
+       EBELP,
+       EBELN
 """)
   df.createOrReplaceTempView("EKKN")
-
-# COMMAND ----------
-
-def gera_tabela_EBAN():
-  df = spark.sql("""
-SELECT DISTINCT
-       FRGKZ
-FROM TRUSTED_SAP.EBAN
-""")
-  df.createOrReplaceTempView("EBAN")
 
 # COMMAND ----------
 
@@ -144,10 +137,48 @@ SELECT DISTINCT
        BNFPO,
        FRGGR,
        FRGST,
-       FRGKZ
-FROM TRUSTED_SAP.EBAN AS EBA
+       FRGKZ,
+       BSART
+FROM TRUSTED_SAP.EBAN
   """)
   df.createOrReplaceTempView("EBAN")
+
+# COMMAND ----------
+
+def gera_tabela_CDPOS():
+  df = spark.sql("""
+SELECT DISTINCT
+       CHANGENR,
+       FNAME,
+       MANDANT,
+       OBJECTID,
+       OBJECTCLAS,
+       VALUE_NEW
+FROM TRUSTED_SAP.CDPOS AS CDP
+  """)
+  df.createOrReplaceTempView("CDPOS")
+
+# COMMAND ----------
+
+def gera_tabela_CDHDR():
+  df = spark.sql("""
+SELECT DISTINCT
+       MAX(UDATE) AS DATA_APROVACAO,
+       OBJECTID,
+       MANDANT,
+       OBJECTCLAS,
+       TCODE,
+       CHANGENR
+FROM TRUSTED_SAP.CDHDR
+GROUP BY
+       UDATE,
+       OBJECTID,
+       MANDANT,
+       OBJECTCLAS,
+       TCODE,
+       CHANGENR
+  """)
+  df.createOrReplaceTempView("CDHDR")
 
 # COMMAND ----------
 
@@ -238,11 +269,27 @@ while status == False and x <10:
 
 # COMMAND ----------
 
+gera_tabela_EKPO()
+gera_tabela_EKKO()
+gera_tabela_EKKN()
+gera_tabela_EBAN()
+gera_tabela_EKET()
+gera_tabela_TBFORNECEDOR()
+gera_tabela_CDHDR()
+gera_tabela_CDPOS()
+
+# COMMAND ----------
+
 # MAGIC %sql
 # MAGIC SELECT DISTINCT
 # MAGIC        EKPO.EBELN                                                                                             AS DOC_COMPRAS,
+# MAGIC        EKPO.DATA_HORA_CRIACAO                                                                                 AS DATA_DOC,
+# MAGIC        EKPO.HASHCAL_EXISTS                                                                                    AS ORGC,
 # MAGIC        EKPO.WERKS                                                                                             AS CEN,
 # MAGIC        EKPO.EBELP                                                                                             AS ITEM,
+# MAGIC        EKKO.BSART                                                                                             AS TIPO,
+# MAGIC        EKKO.BSTYP                                                                                             AS CTG,
+# MAGIC        EKKO.EKGRP                                                                                             AS GCM,
 # MAGIC        EKPO.EMATN                                                                                             AS MATERIAL,
 # MAGIC        EKPO.TXZ01                                                                                             AS TEXTO_BREVE,
 # MAGIC        EKPO.MATKL                                                                                             AS GRPMERCADS,
@@ -253,12 +300,84 @@ while status == False and x <10:
 # MAGIC        EKPO.PEINH                                                                                             AS POR,
 # MAGIC        CAST((((EKPO.MENGE - COALESCE(EKET.WEMNG,0))*EKPO.NETPR)/COALESCE(EKPO.PEINH,1)) AS DECIMAL(18,6))     AS A_FORNECER,
 # MAGIC        CAST((EKPO.MENGE - COALESCE(EKET.WEMNG,0)) AS DECIMAL(18,6))                                           AS A_FATURAR,
+# MAGIC        EKKO.GRWCU                                                                                             AS MOEDA,
 # MAGIC        EKPO.BANFN                                                                                             AS REQUISICAO,
 # MAGIC        EKPO.BNFPO                                                                                             AS ITEM_RC,
+# MAGIC        EKET.SLFDT                                                                                             AS DT_REMESSA,
+# MAGIC        EKKO.FRGKE                                                                                             AS LIB,
+# MAGIC        EKKO.ERNAM                                                                                             AS CRIADOR,
+# MAGIC        EKKO.ZTERM                                                                                             AS COND_PAGAMENTO,
+# MAGIC        EKKO.ZBD1T                                                                                             AS PAGAMENTO_EM,
+# MAGIC        EKKO.WKURS                                                                                             AS TAXA_CAMBIO,
+# MAGIC        EKKO.INCO1                                                                                             AS INCOTERMS,
+# MAGIC        EKKO.MEMORY                                                                                            AS MEMORIZADO,
 # MAGIC        EKPO.BRTWR                                                                                             AS VALOR_BRUTO,
 # MAGIC        EKPO.J_1BNBM                                                                                           AS NCM,
 # MAGIC        EKPO.MWSKZ                                                                                             AS IVA,
-# MAGIC        CONCAT(EKPO.EBELN, EKPO.EBELP)                                                                         AS CHAVE_PEDIDO
-# MAGIC FROM TRUSTED_SAP.EKPO
-# MAGIC INNER JOIN TRUSTED_SAP.EKET
-# MAGIC   ON EKPO.EBELP = EKET.EBELP
+# MAGIC        FORN.NOME                                                                                              AS NOME_COMP_FORNECEDOR, 
+# MAGIC        EKKN.KOSTL                                                                                             AS CENTRO_CUSTO,
+# MAGIC        EKKN.PRCTR                                                                                             AS CENTRO_LUCRO,
+# MAGIC        EKKN.AUFNR                                                                                             AS ORDEM,
+# MAGIC        EKKN.IMOBILIZADO                                                                                       AS IMOBILIZADO,
+# MAGIC        EBAN.BSART                                                                                             AS TIPO_RC,
+# MAGIC        CONCAT(EKPO.EBELN, EKPO.EBELP)                                                                         AS CHAVE_PEDIDO,
+# MAGIC        CONCAT(EKPO.EBELN, EKKO.INCO1)                                                                         AS CHAVE_FRETE
+# MAGIC FROM EKPO
+# MAGIC INNER JOIN EKKO
+# MAGIC   ON EKPO.EBELN = EKKO.EBELN
+# MAGIC INNER JOIN EKET
+# MAGIC   ON EKKO.EBELN = EKET.EBELN
+# MAGIC     AND EKPO.EBELP = EKET.EBELP
+# MAGIC INNER JOIN EBAN 
+# MAGIC   ON EKPO.BANFN = EBAN.BANFN
+# MAGIC     AND EKPO.BNFPO = EBAN.BNFPO
+# MAGIC INNER JOIN EKKN
+# MAGIC   ON EKKO.EBELN = EKKN.EBELN
+# MAGIC     AND EKPO.EBELP = EKKN.EBELP
+# MAGIC LEFT JOIN TBFORNECEDOR AS FORN
+# MAGIC   ON EKKO.LIFNR = FORN.FORNECEDOR
+# MAGIC INNER JOIN CDHDR
+# MAGIC   ON CDHDR.OBJECTID = EBAN.BANFN
+# MAGIC INNER JOIN CDPOS
+# MAGIC   ON CDPOS.MANDANT = CDHDR.MANDANT
+# MAGIC     AND CDHDR.CHANGENR = CDPOS.CHANGENR
+# MAGIC     AND CDPOS.OBJECTCLAS = CDHDR.OBJECTCLAS
+# MAGIC     AND CDPOS.OBJECTID = CDHDR.OBJECTID
+# MAGIC WHERE EBAN.FRGKZ != 'X'
+# MAGIC   AND CDPOS.FNAME = 'FRGKZ'
+# MAGIC   AND CDPOS.VALUE_NEW != 'X'
+# MAGIC   AND CDHDR.TCODE = 'ME54N'
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM DVRY_SAP.TBFORNECEDOR
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select count(*)
+# MAGIC FROM EKPO --501738
+# MAGIC INNER JOIN EKKO --501109
+# MAGIC   ON EKPO.EBELN = EKKO.EBELN
+# MAGIC INNER JOIN EKET --501642
+# MAGIC   ON EKKO.EBELN = EKET.EBELN
+# MAGIC     AND EKPO.EBELP = EKET.EBELP
+# MAGIC INNER JOIN EBAN --342137
+# MAGIC   ON EKPO.BANFN = EBAN.BANFN
+# MAGIC     AND EKPO.BNFPO = EBAN.BNFPO
+# MAGIC INNER JOIN EKKN --257214
+# MAGIC   ON EKKO.EBELN = EKKN.EBELN
+# MAGIC     AND EKPO.EBELP = EKKN.EBELP
+# MAGIC LEFT JOIN TBFORNECEDOR AS FORN
+# MAGIC   ON EKKO.LIFNR = FORN.FORNECEDOR
+# MAGIC WHERE EBAN.FRGKZ != 'X'
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC select * from trusted_sap.ekkn
+
+# COMMAND ----------
+
+# MAGIC %sql
